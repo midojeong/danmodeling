@@ -60,9 +60,19 @@ R(read)는 get이라는 명칭으로 통일하며, 이 때 메소드또한 get�
     - 설명: 만들어진 course를 그대로 보내줌. (id도 포함)
 
 - POST /update/schedule/:id  **(매우 중요)**
-    - 요청: `{ create: {from: , to: }, create: {from: , to: }}`
-    - 응답: todo
-    - 설명: todo
+    - 요청: ```[ 
+     {mode: "create", from: null , to: [날짜, 시간] }, 
+     {mode: "create", from: null, to: [날짜, 시간]},
+     {mode: "update", from: 스케쥴id, to: [새날짜, 새시간]}
+     {mode: "delete", from: 스케쥴id, to: null}
+     ...
+    ]```
+    - 응답: `[ schedule1, schedule2, schedule3, .... ]` 변경된 course의 모든 스케쥴을 다 보내주면됨. 실패코드는 아래에 설명
+    - 설명: 이미 존재하는 schedule의 time이 바뀌면(`{mode: update, ...}` 그 schedule의 id를 들고있는 (fk_schdeule 이 있는) 세션들의 attendance가 업데이트됨(time이 바뀔 경우) 당연히 session의 charged 및 net도 변경될 것임. 새로운 스케쥴들이 생성되는 경우(`{mode: create ...}`) course에 등록된 학생을 검색(enroll table에서). 세션을 생성해줘야함. 스케쥴을 삭제하는 경우 (`{mode: delete}`) 해당 스케쥴과 연결된 session들은 모두 `active: false` 처리가 되며, charged도 0으로 바뀌고 net은 -paid로 바뀜. 이에 맞춰서 session들의 paymentState도 바뀌어야함. 즉 모든 경우(mode: create, delete, update)에 있어서 연관되는 session들을 생성, 삭제, 업데이트해줘야 함.
+    
+    - 제한조건: 위 요청을 처리한 결과로 만들어지는 날짜들이 겹치면 안됨(**중요**) 겹치게 될 경우, 코드 401, 없는 id의 스케쥴을 delete로 지우려할 경우 코드 402의 예외처리(더 있겠지만 기본적으로는). 프론트에서도 요청을 생성하기전에 한번 검수할 것이긴 하지만, 여럿이서 동시접근했을 때 db에서 에러가 나지 않으려면 백엔드에서 이렇게 한번 필터링을 해줘야함.
+    
+
 
 - POST /update/price/:id  **(중요)**
     - 요청: `{ price: ... }`
